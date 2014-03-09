@@ -68,10 +68,26 @@ def mid_weekday_peak_period_travel_times():
     """
     print('Query c: Mid-Weekday Peak Period Travel Times')
 
-    d_query = 'SELECT * FROM `%s` WHERE shortdirection = `N` AND highwayname=`I-205` AND stationclass = `1`' % DETECTOR_DOMAIN
-    detectors = detector_dom.select(d_query)
-    for detector in detectors:
-        print detector
+    #s_query = 'SELECT length_mid FROM `%s` WHERE shortdirection = `N` AND highwayname=`I-205` AND stationclass = `1`' % STATION_DOMAIN
+    
+    
+    s_query1 = 'SELECT stationid  FROM `%s` WHERE Shortdirection = "N" AND highwayname ="I-205" and detectorclass="1"' %DETECTOR_DOMAIN
+    
+    stations = detector_dom.select(s_query1)
+        
+    sDict = {}
+    sList = []
+    for ea in stations:
+        sDict[ea['stationid']] = 0
+        sList.append(ea['stationid'])
+
+    for ea in sList:
+        length_query = 'SELECT length_mid From `%s` WHERE itemName() = "%s"' %(STATION_DOMAIN, ea)
+        s_Length = station_dom.select(length_query)
+        for i in s_Length:
+            sDict[ea] = i['length_mid']
+
+    print sDict['1142']
 
 
 def station_to_Station_travel_times():
