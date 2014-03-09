@@ -67,7 +67,11 @@ def mid_weekday_peak_period_travel_times():
     period.
     """
     print('Query c: Mid-Weekday Peak Period Travel Times')
-    print(NotImplemented)
+
+    d_query = 'SELECT * FROM `%s` WHERE shortdirection = `N` AND highwayname=`I-205` AND stationclass = `1`' % DETECTOR_DOMAIN
+    detectors = detector_dom.select(d_query)
+    for detector in detectors:
+        print detector
 
 
 def station_to_Station_travel_times():
@@ -99,7 +103,7 @@ if __name__ == '__main__':
     #   for Linux, /etc/boto.cfg or ~/.boto
     #   for Windows create BOTO_CONFIG environment variable that points to the config file
 
-    conn = boto.sdb.connect_to_region(AWS_EAST_VA_REGION)
+    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION, aws_access_key_id='***REMOVED***', aws_secret_access_key='***REMOVED***')
 
     #print(conn.get_all_domains())
     detector_dom = conn.get_domain(DETECTOR_DOMAIN)
