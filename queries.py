@@ -204,7 +204,7 @@ if __name__ == '__main__':
     #   for Linux, /etc/boto.cfg or ~/.boto
     #   for Windows create BOTO_CONFIG environment variable that points to the config file
 
-    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION, aws_access_key_id='***REMOVED***', aws_secret_access_key='***REMOVED***')
+    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION, aws_access_key_id='', aws_secret_access_key='')
 
     #print(conn.get_all_domains())
     detector_dom = conn.get_domain(DETECTOR_DOMAIN)
