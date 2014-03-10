@@ -202,9 +202,9 @@ if __name__ == '__main__':
     # Store aws_access credential in Boto config file (not in source code)
     # http://boto.readthedocs.org/en/latest/boto_config_tut.html
     #   for Linux, /etc/boto.cfg or ~/.boto
-    #   for Windows create BOTO_CONFIG environment variable that points to the config file
-
-    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION, aws_access_key_id='', aws_secret_access_key='')
+    #   for Windows create BOTO_CONFIG environment variable that points to the
+    #   config file
+    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION) #DO NOT SPECIFY KEY
 
     #print(conn.get_all_domains())
     detector_dom = conn.get_domain(DETECTOR_DOMAIN)
