@@ -34,3 +34,10 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# PyCharm IDE project configuration files
+.idea/
+
+# PyDev IDE project configuration files
+.project
+.pydevproject
