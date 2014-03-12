@@ -81,7 +81,7 @@ def single_day_station_travel_times():
     print(NotImplemented)
 
 
-def _hourly_speed_group_by((station_id, loop_result_iter)):
+def _hourly_speed_group_by((station_id, detector_id, loop_result_iter)):
     """Helper function to group by the result and process each
     result in the loop_result_iter.  SimpleDB does not support any
     function in select beside COUNT(*), so combining the station_id
@@ -102,7 +102,7 @@ def _hourly_speed_group_by((station_id, loop_result_iter)):
         except exceptions.ValueError:
             continue
         result.append((station_id, starttime_hour, speed))
-    return({station_id: result})
+    return {station_id: (detector_id, result)}
 
 
 def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
@@ -160,20 +160,20 @@ def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
         print("%s: %s" % (station_id, detector_ids_by_station_chain[station_id]))
 
     # 3.  Query all loop data having detector ID in the list of detectors found in step 2
-
     loop_query_by_station = {}
     # Build a query to select all loop data for each station
     for station_id in station_id_chain:
         query_or_clauses = []
+        loop_query_by_station[station_id] = []
         for detector_id in detector_ids_by_station_chain[station_id]:
             query_or_clauses.append('detectorid="%s"' % (detector_id))
-        all_loops_query = ("""SELECT starttime, speed FROM `%s`
-            WHERE status = "%s"
-                AND speed IS NOT NULL
-                AND speed != ""
-                AND (%s) """
-            % (LOOP_DOMAIN, LOOP_STATUS_OK, " OR ".join(query_or_clauses)))
-        loop_query_by_station[station_id] = all_loops_query
+            all_loops_query = ("""SELECT starttime, speed FROM `%s`
+                WHERE status = "%s"
+                    AND speed IS NOT NULL
+                    AND speed != ""
+                    AND detectorid="%s" """
+                % (LOOP_DOMAIN, LOOP_STATUS_OK, detector_id))
+            loop_query_by_station[station_id].append((detector_id, all_loops_query))
 
     # 4.  Using a mapper to map speed by starttime and station ID.
     # Because SimpleDB can store multiple values in one attributes,
@@ -182,21 +182,28 @@ def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
     hourly_average_speed_by_station = {}
     group_by_args1 = []
     group_by_args2 = []
-    for station_id, loop_query in loop_query_by_station.items():
-        print("Query for station ID# %s" % station_id)
-        print(loop_query)
-        loop_result_iter = loop_dom.select(loop_query)
-        group_by_args1.append(station_id)
-        group_by_args2.append(loop_result_iter)
+    group_by_args3 = []
+    for station_id, detectory_queries in loop_query_by_station.items():
+        for (detector_id, loop_query) in detectory_queries:
+            print("Query for station ID# %s" % station_id)
+            print(loop_query)
+            loop_result_iter = loop_dom.select(loop_query)
+            group_by_args1.append(station_id)
+            group_by_args2.append(detector_id)
+            group_by_args3.append(loop_result_iter)
 
-    groupers = multiprocessing.Pool(multiprocessing.cpu_count())
-    for result in groupers.map(_hourly_speed_group_by, zip(group_by_args1, group_by_args2)):
+    groupers = multiprocessing.Pool(len(group_by_args1))
+    for result in groupers.map(_hourly_speed_group_by,
+                               zip(group_by_args1, group_by_args2, group_by_args3)):
         # TODO pick one and remove the other, depend on the reduce step.
         # save to memory
         hourly_average_speed_by_station[result.keys()[0]] = result[result.keys()[0]]
         # save to disc
-        with open('query_2_station_%s_loop_hourly.txt' % result.keys()[0], 'w') as result_file:
-            result_file.write("\n".join("%s,%s,%s" % result[result.keys()[0]][0]))
+        if result[result.keys()[0]][1]:
+            with open('query_2_station_%s_%s_loop_hourly.txt' %
+                              (result.keys()[0], result[result.keys()[0]][0]),
+                      'w') as result_file:
+                result_file.write("\n".join("%s,%s,%s" % r for r in result[result.keys()[0]][1]))
 
     # 5.  Reduce to starhour, travelduration
     # TODO:  implement reducer
@@ -470,11 +477,11 @@ def main():
     # print("-" * 50)
 
     ##Hong
-    # hourly_corridor_travel_times(from_station_name='Sunnyside NB',
-    #                              to_station_name='Columbia to I-205 NB',
-    #                              highway_name='I-205',
-    #                              short_direction='N')
-    # print("-" * 50)
+    hourly_corridor_travel_times(from_station_name='Sunnyside NB',
+                                 to_station_name='Columbia to I-205 NB',
+                                 highway_name='I-205',
+                                 short_direction='N')
+    print("-" * 50)
 
     ##Tyler -- About 7 minutes
     #mid_weekday_peak_period_travel_times()
