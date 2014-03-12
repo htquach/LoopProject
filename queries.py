@@ -72,13 +72,95 @@ def query_top_5_samples():
     for loop in loops:
         print loop
 
-
 def single_day_station_travel_times():
-    """Find travel time for each NB station for 5 minute intervals for
-    Sept 22, 2011.
-    """
+#4:40 on next Monday, 12 minute presentations 3 minutes for questions
+#evidence to execute all queries (abridged data?)
+#critique query execution plan (no map/reduce for example)
+#lessons learned, what to say about system, features missed, features liked, loved, hated
+#2 page paper (max), should be online, due friday of next week?
+    """Find travel time for each NB station for 5 minute intervals for Sept 22, 2011."""
+    #the average travel time to traverse through a station's area over a 5 minute period
     print('Query a: Single-Day Station Travel Times')
-    print(NotImplemented)
+    
+    s_query1 = 'SELECT stationid FROM `%s` WHERE Shortdirection = "N" AND highwayname ="I-205" and detectorclass="1"' %DETECTOR_DOMAIN
+    
+    stations = detector_dom.select(s_query1)
+        
+    sDict = {}
+    sList = []
+    for ea in stations:
+        sDict[ea['stationid']] = 0
+        sList.append(ea['stationid'])
+
+    sList2 = []
+    for ea in sList:
+        if ea not in sList2:
+            sList2.append(ea)
+
+    sList = sList2
+    stationCount = len(sList)
+
+    for ea in sList:
+        length_query = 'SELECT length_mid FROM `%s` WHERE itemName() = "%s"' %(STATION_DOMAIN, ea)
+        s_Length = station_dom.select(length_query)
+        for i in s_Length:
+            sDict[ea] = i['length_mid']
+
+
+    #NEED TO STILL GET dLIST SOMEHOW
+    #dList = []
+    #d_query1 = 'SELECT detectorid FROM '%s' WHERE stationid = %s GROUP BY stationid" %(DETECTOR_DOMAIN, station)
+    #detectors = detector_dom.select(d_query1)
+    #for dec in detectors:
+        #dList.append(dec['detectorid'])
+    dList = [1345,1346,1347,1348,1353,1354,1355,1361,1362,1363,1369,1370,1371,1809,1810,1811,1941,1942,1943,1949,1950,1951]
+
+    detectorCount = len(dList)
+
+    #NEED TO CREAT FUNCTION FOR detector mid length dDict
+    #for item in dList, map dList[item] to sDict[item] and save it to dDict
+    #dDict is a dictionary or detector ID's to station lengths
+    dDict = {1345 : 0.94,1346 : 0.94,1347 : 0.94,1348 : 0.94,1353 : 1.89,1354 : 1.89,1355 : 1.89,1361 : 1.6,1362 : 1.6,1363 : 1.6,1369 : 0.86,1370 : 0.86,1371 : 0.86,1809 : 0.84,1810 : 0.84,1811 : 0.84,1941 : 2.14,1942 : 2.14,1943 : 2.14,1949 : 1.82,1950 : 1.82,1951 : 1.82}
+
+    #this dictionary will match the detectorid to stationid used above for each detector to corresponding stations
+    dettosta = {1345:1111, 1346:1111, 1347:1111, 1348:1111, 1353:2222, 1354:2222, 1355:2222, 1361:3333, 1362:3333, 1363:3333, 1369:4444, 1370:4444, 1371:4444, 1809:5555, 1810:5555, 1811:5555, 1941:6666, 1942:6666, 1943:6666, 1949:7777, 1950:7777, 1951:7777)
+    #count of results
+    resCount = 0
+    totalTime = 0.0
+    speed5Min = 0.0
+    numReadings = 0
+    per = "%"
+    
+    file = open('results.txt', 'w')
+
+    day = 22
+    year = 2011
+    month = "09"
+    for hr in range(0, 23):
+        for i in range(0,11): #for every 5 minute increment this hour
+            for sta in sList:
+                for det in dList:
+                    if dettosta[det] == sta:
+                        for minute in range(0,4):
+                            min = minute + (i*5)
+                            l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%sT%s:%s:%s" AND speed is not null ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, min, per)
+                            data = loopdata_dom.select(l_query)
+                            for d in data:
+                                resCount += 1
+                                #need to determine what impact 0 speeds will have on the results
+                                if not (float(d['speed']) == 0):
+                                    numReadings += 1
+                                    speed5Min += float(d['speed'])
+                #look up station from det?
+                file.write('station: %s, time: %s:%s - %s:%s, travel time: %s\n' %(sta, hr, (min - 4), hr, min, (dDict[det]/(speed5Min/numReadings))))
+                speed5Min = 0.0
+                numReadings = 0
+
+    file.close()
+
+    print totalTime
+    print resCount
+    
 
 
 def _hourly_speed_group_by((station_id, detector_id, loop_result_iter)):
