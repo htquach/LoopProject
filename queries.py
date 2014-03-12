@@ -177,7 +177,6 @@ def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
                 AND speed != ""
                 AND (%s) """
             % (LOOP_DOMAIN, LOOP_STATUS_OK, " OR ".join(query_or_clauses)))
-        all_loops_query += " LIMIT 10"
         loop_query_by_station[station_id] = all_loops_query
 
     # 4.  Using a mapper to map speed by starttime and station ID.
@@ -190,19 +189,18 @@ def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
     for station_id, loop_query in loop_query_by_station.items():
         print("Query for station ID# %s" % station_id)
         print(loop_query)
-        #Debug note: apply the max_items for sample result
-        loop_result_iter = loop_dom.select(loop_query)
+        loop_result_iter = loop_dom.select(loop_query, max_items=10000000)
         group_by_args1.append(station_id)
         group_by_args2.append(loop_result_iter)
 
-    groupers = multiprocessing.Pool(multiprocessing.cpu_count()*2)
+    groupers = multiprocessing.Pool(multiprocessing.cpu_count())
     for result in groupers.map(_hourly_speed_group_by, zip(group_by_args1, group_by_args2)):
         # TODO pick one and remove the other, depend on the reduce step.
         # save to memory
         hourly_average_speed_by_station[result.keys()[0]] = result[result.keys()[0]]
         # save to disc
         with open('query_2_station_%s_loop_hourly.txt' % result.keys()[0], 'w') as result_file:
-            result_file.write("\n".join(result[result.keys()[0]]))
+            result_file.write("\n".join("%s,%s,%s" % result[result.keys()[0]]))
 
     # 5.  Reduce to starhour, travelduration
     # TODO:  implement reducer
