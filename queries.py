@@ -54,19 +54,19 @@ def show_domains_stat():
 
 def query_top_5_samples():
     """Show 5 items from the each domain"""
-    print("Top 5 %" % DETECTOR_DOMAIN)
+    print("Top 5 %s" % DETECTOR_DOMAIN)
     d_query = 'SELECT * FROM `%s`' % DETECTOR_DOMAIN
     detectors = detector_dom.select(d_query, max_items=5)
     for detector in detectors:
         print detector
 
-    print("Top 5 %" % STATION_DOMAIN)
+    print("Top 5 %s" % STATION_DOMAIN)
     s_query = 'SELECT * FROM `%s`' % STATION_DOMAIN
     stations = station_dom.select(s_query, max_items=5)
     for station in stations:
         print station
 
-    print("Top 5 %" % LOOP_DOMAIN)
+    print("Top 5 %s" % LOOP_DOMAIN)
     l_query = 'SELECT * FROM `%s`' % LOOP_DOMAIN
     loops = loop_dom.select(l_query, max_items=5)
     for loop in loops:
@@ -95,11 +95,7 @@ def _hourly_speed_group_by((station_id, loop_result_iter)):
     """
     result = []
     #TODO: test one item for the expected attribute
-
-    #TODO: implement a query select instead of roundtrip every query.
-
-    loop_result = list(loop_result_iter)
-    for loop in loop_result:
+    for loop in loop_result_iter:
         try:
             starttime_hour = "%s:00:00" % loop["starttime"][:-6]
             speed = int(loop["speed"])
@@ -189,7 +185,7 @@ def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
     for station_id, loop_query in loop_query_by_station.items():
         print("Query for station ID# %s" % station_id)
         print(loop_query)
-        loop_result_iter = loop_dom.select(loop_query, max_items=10000000)
+        loop_result_iter = loop_dom.select(loop_query)
         group_by_args1.append(station_id)
         group_by_args2.append(loop_result_iter)
 
@@ -200,7 +196,7 @@ def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
         hourly_average_speed_by_station[result.keys()[0]] = result[result.keys()[0]]
         # save to disc
         with open('query_2_station_%s_loop_hourly.txt' % result.keys()[0], 'w') as result_file:
-            result_file.write("\n".join("%s,%s,%s" % result[result.keys()[0]]))
+            result_file.write("\n".join("%s,%s,%s" % result[result.keys()[0]][0]))
 
     # 5.  Reduce to starhour, travelduration
     # TODO:  implement reducer
@@ -463,11 +459,11 @@ def init_conn():
 
 def main():
     """Show the domain summary and run each query one at a time."""
-    # show_domains_stat()
-    # print("-" * 50)
+    show_domains_stat()
+    print("-" * 50)
 
-    # query_top_5_detector()
-    # print("-" * 50)
+    query_top_5_samples()
+    print("-" * 50)
 
     ##Jason
     # single_day_station_travel_times()
