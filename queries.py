@@ -15,12 +15,20 @@ import boto.sdb
 # AWS Boto API http://aws.amazon.com/sdkforpython/
 
 # http://docs.aws.amazon.com/general/latest/gr/rande.html#sdb_region
-AWS_EAST_VA_REGION = 'us-east-1'
 AWS_WEST_OR_REGION = 'us-west-2'
 
 DETECTOR_DOMAIN = 'TeamA_Detector'
-LOOPDATA_DOMAIN = 'TeamA_Loop'
+LOOP_DOMAIN = 'TeamA_Loop'
 STATION_DOMAIN  = 'TeamA_Station'
+
+# Global variables for data access
+conn = None
+detector_dom = None
+loop_dom = None
+station_dom = None
+detector_meta = None
+loop_meta = None
+station_meta = None
 
 
 def show_domains_stat():
@@ -31,16 +39,29 @@ def show_domains_stat():
             continue
         print("%s:\t%s\t%s\t%s" % (attr,
                                    getattr(detector_meta, attr),
-                                   getattr(loopdata_meta, attr),
+                                   getattr(loop_meta, attr),
                                    getattr(station_meta, attr)))
 
 
-def query_top_5_detector():
-    """Show 5 items from the detector_domain"""
+def query_top_5_samples():
+    """Show 5 items from the each domain"""
+    print("Top 5 %" % DETECTOR_DOMAIN)
     d_query = 'SELECT * FROM `%s`' % DETECTOR_DOMAIN
     detectors = detector_dom.select(d_query, max_items=5)
     for detector in detectors:
         print detector
+
+    print("Top 5 %" % STATION_DOMAIN)
+    s_query = 'SELECT * FROM `%s`' % STATION_DOMAIN
+    stations = station_dom.select(s_query, max_items=5)
+    for station in stations:
+        print station
+
+    print("Top 5 %" % LOOP_DOMAIN)
+    l_query = 'SELECT * FROM `%s`' % LOOP_DOMAIN
+    loops = loop_dom.select(l_query, max_items=5)
+    for loop in loops:
+        print loop
 
 
 def single_day_station_travel_times():
@@ -51,14 +72,25 @@ def single_day_station_travel_times():
     print(NotImplemented)
 
 
-def hourly_corridor_travel_times(from_station_name, to_station_name,
-                                 highway_name, short_direction):
+def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
+                                 highway_name=None, short_direction=None):
     """Find travel time for the entire I-205 NB freeway
     section in the data set (Sunnyside Rd to the river - all NB stations
     in the data set) for each hour in the 2-month test period.
     """
     print('Query b: Hourly Corridor Travel Times')
-    print(NotImplemented)
+    # Using a 'for-loop' to query the sequence of stations from the starting
+    # station to the ending station (Sunnyside to River).
+    # Traverse by 'downstream' station ID.
+
+    # Query the list of detectors in the list of stations found in step 1
+
+    # Query all loop data having detector ID in the list of detectors found in step 2
+
+    # Using a mapper to map speed by starttime and station ID.
+    # Because SimpleDB can store multiple values in one attributes,
+    # we will map all the speed data of a given station within a given
+    # hour into a value of that station with the starttime as key.
 
 
 def mid_weekday_peak_period_travel_times():
@@ -122,8 +154,8 @@ def mid_weekday_peak_period_travel_times():
         if (start % 7) in [4,5,6]:
             for det in dList:
                 for hr in  ["07","08","16","17"]:
-                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, per)
-                    data = loopdata_dom.select(l_query)
+                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOP_DOMAIN, det, year, month, day, hr, per)
+                    data = loop_dom.select(l_query)
                     for d in data:
                         resCount += 1
                             #need to determine what impact 0 speeds will have on the results
@@ -141,8 +173,8 @@ def mid_weekday_peak_period_travel_times():
         if (start % 7) in [4,5,6]:
             for det in dList:
                 for hr in  ["07","08","16","17"]:
-                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, per)
-                    data = loopdata_dom.select(l_query)
+                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOP_DOMAIN, det, year, month, day, hr, per)
+                    data = loop_dom.select(l_query)
                     for d in data:
                         resCount += 1
                         #need to determine what impact 0 speeds will have on the results
@@ -160,8 +192,8 @@ def mid_weekday_peak_period_travel_times():
         if (start % 7) in [4,5,6]:
             for det in dList:
                 for hr in  ["07","08","16","17"]:
-                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, per)
-                    data = loopdata_dom.select(l_query)
+                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOP_DOMAIN, det, year, month, day, hr, per)
+                    data = loop_dom.select(l_query)
                     for d in data:
                         resCount += 1
                         #need to determine what impact 0 speeds will have on the results
@@ -228,8 +260,8 @@ def mid_weekday_peak_period_travel_times():
         if (start % 7) in [4,5,6]:
             for det in dList:
                 for hr in  ["07","08","16","17"]:
-                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, per)
-                    data = loopdata_dom.select(l_query)
+                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOP_DOMAIN, det, year, month, day, hr, per)
+                    data = loop_dom.select(l_query)
                     for d in data:
                         resCount += 1
                             #need to determine what impact 0 speeds will have on the results
@@ -247,8 +279,8 @@ def mid_weekday_peak_period_travel_times():
         if (start % 7) in [4,5,6]:
             for det in dList:
                 for hr in  ["07","08","16","17"]:
-                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, per)
-                    data = loopdata_dom.select(l_query)
+                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOP_DOMAIN, det, year, month, day, hr, per)
+                    data = loop_dom.select(l_query)
                     for d in data:
                         resCount += 1
                         #need to determine what impact 0 speeds will have on the results
@@ -266,8 +298,8 @@ def mid_weekday_peak_period_travel_times():
         if (start % 7) in [4,5,6]:
             for det in dList:
                 for hr in  ["07","08","16","17"]:
-                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, per)
-                    data = loopdata_dom.select(l_query)
+                    l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%s %s:%s" AND speed is not null ' %(LOOP_DOMAIN, det, year, month, day, hr, per)
+                    data = loop_dom.select(l_query)
                     for d in data:
                         resCount += 1
                         #need to determine what impact 0 speeds will have on the results
@@ -284,7 +316,8 @@ def mid_weekday_peak_period_travel_times():
                                           
     print "Average Commute Time: ", totalTime/(resCount/stationCount)
 
-def station_to_Station_travel_times():
+
+def station_to_station_travel_times():
     """Find travel time for all station-to-station NB pairs for 8AM on
     Sept 22, 2011.
     """
@@ -292,37 +325,58 @@ def station_to_Station_travel_times():
     print(NotImplemented)
 
 
-def main():
-    print("-" * 50)
-    show_domains_stat()
+def init_conn():
+    """Initialize global variables for data connection"""
+    global conn, detector_dom, loop_dom, station_dom, detector_meta, loop_meta, station_meta
 
-    print("-" * 50)
-    query_top_5_detector()
-
-    print("-" * 50)
-    single_day_station_travel_times()
-    hourly_corridor_travel_times('Sunnyside NB', 'Columbia to I-205 NB',
-                                 'I-205', 'N')
-    mid_weekday_peak_period_travel_times()
-    station_to_Station_travel_times()
-
-
-if __name__ == '__main__':
     # Store aws_access credential in Boto config file (not in source code)
     # http://boto.readthedocs.org/en/latest/boto_config_tut.html
     #   for Linux, /etc/boto.cfg or ~/.boto
     #   for Windows create BOTO_CONFIG environment variable that points to the
     #   config file
-    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION) #DO NOT SPECIFY KEY
+    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION)  #DO NOT SPECIFY KEY
 
     #print(conn.get_all_domains())
     detector_dom = conn.get_domain(DETECTOR_DOMAIN)
-    loopdata_dom = conn.get_domain(LOOPDATA_DOMAIN)
+    loop_dom = conn.get_domain(LOOP_DOMAIN)
     station_dom = conn.get_domain(STATION_DOMAIN)
 
     #print(detector_dom, loopdata_dom, station_dom)
     detector_meta = conn.domain_metadata(detector_dom)
-    loopdata_meta = conn.domain_metadata(loopdata_dom)
+    loop_meta = conn.domain_metadata(loop_dom)
     station_meta = conn.domain_metadata(station_dom)
+
+
+def main():
+    """Show the domain summary and run each query one at a time."""
+    show_domains_stat()
+    print("-" * 50)
+
+    # query_top_5_detector()
+    print("-" * 50)
+
+    ##Jason
+    single_day_station_travel_times()
+    print("-" * 50)
+
+    ##Hong
+    hourly_corridor_travel_times(from_station_name='Sunnyside NB',
+                                 to_station_name='Columbia to I-205 NB',
+                                 highway_name='I-205',
+                                 short_direction='N')
+    print("-" * 50)
+
+    ##Tyler -- About 7 minutes
+    mid_weekday_peak_period_travel_times()
+    print("-" * 50)
+
+    ##Jon
+    station_to_station_travel_times()
+    print("-" * 50)
+
+
+if __name__ == '__main__':
+
+    init_conn()
 
     main()
