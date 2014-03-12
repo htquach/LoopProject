@@ -143,7 +143,7 @@ def single_day_station_travel_times():
                     if dettosta[det] == sta:
                         for minute in range(0,4):
                             min = minute + (i*5)
-                            l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%sT%s:%s:%s" AND speed is not null ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, min, per)
+                            l_query = 'SELECT speed FROM `%s` WHERE detectorid = "%s" AND starttime like "%s-%s-%sT%s:%s:%s" AND speed != "" ' %(LOOPDATA_DOMAIN, det, year, month, day, hr, min, per)
                             data = loopdata_dom.select(l_query)
                             for d in data:
                                 resCount += 1
