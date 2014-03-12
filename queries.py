@@ -19,7 +19,7 @@ AWS_EAST_VA_REGION = 'us-east-1'
 AWS_WEST_OR_REGION = 'us-west-2'
 
 DETECTOR_DOMAIN = 'TeamA_Detector'
-LOOPDATA_DOMAIN = 'TeamA_LoopData'
+LOOPDATA_DOMAIN = 'TeamA_Loop'
 STATION_DOMAIN  = 'TeamA_Station'
 
 
@@ -68,40 +68,43 @@ def mid_weekday_peak_period_travel_times():
     """
     print('Query c: Mid-Weekday Peak Period Travel Times')
 
-
     
-    s_query1 = 'SELECT stationid  FROM `%s` WHERE Shortdirection = "N" AND highwayname ="I-205" and detectorclass="1"' %DETECTOR_DOMAIN
+    s_query1 = 'SELECT stationid, length_mid  FROM `%s` WHERE shortdirection = "N" AND highwayname ="I-205" and length_mid != ""' %STATION_DOMAIN
     
-    stations = detector_dom.select(s_query1)
+    
+    stations = station_dom.select(s_query1)
         
     sDict = {}
     sList = []
     for ea in stations:
-        sDict[ea['stationid']] = 0
+        print ea
+        sDict[ea['stationid']] = ea['length_mid']
         sList.append(ea['stationid'])
 
-    sList2 = []
-    for ea in sList:
-        if ea not in sList2:
-            sList2.append(ea)
 
-    sList = sList2
     stationCount = len(sList)
 
-    for ea in sList:
-        length_query = 'SELECT length_mid From `%s` WHERE itemName() = "%s"' %(STATION_DOMAIN, ea)
-        s_Length = station_dom.select(length_query)
-        for i in s_Length:
-            sDict[ea] = i['length_mid']
+    dList = []
+    dDict = {}
+    for ea in range(0, len(sList)):
+        detector_query = 'SELECT detectorid From `%s` WHERE stationid = "%s"' %(STATION_DOMAIN, sList[ea])
+        
+        print detector_query
+        d_query = detector_dom.select(detector_query)
+        for i in d_query:
+            dDict[i['detectorid']] = sDict[sList[ea]]
+            dList.append(i['detectorid'])
 
 
-    #NEED TO STILL GET dLIST SOMEHOW
+
+
+    """#NEED TO STILL GET dLIST SOMEHOW
     dList = [1345,1346,1347,1348,1353,1354,1355,1361,1362,1363,1369,1370,1371,1809,1810,1811,1941,1942,1943,1949,1950,1951]
 
     detectorCount = len(dList)
 
     #NEED TO CREAT FUNCTION FOR detector mid length dDict
-    dDict = {1345 : 0.94,1346 : 0.94,1347 : 0.94,1348 : 0.94,1353 : 1.89,1354 : 1.89,1355 : 1.89,1361 : 1.6,1362 : 1.6,1363 : 1.6,1369 : 0.86,1370 : 0.86,1371 : 0.86,1809 : 0.84,1810 : 0.84,1811 : 0.84,1941 : 2.14,1942 : 2.14,1943 : 2.14,1949 : 1.82,1950 : 1.82,1951 : 1.82}
+    dDict = {1345 : 0.94,1346 : 0.94,1347 : 0.94,1348 : 0.94,1353 : 1.89,1354 : 1.89,1355 : 1.89,1361 : 1.6,1362 : 1.6,1363 : 1.6,1369 : 0.86,1370 : 0.86,1371 : 0.86,1809 : 0.84,1810 : 0.84,1811 : 0.84,1941 : 2.14,1942 : 2.14,1943 : 2.14,1949 : 1.82,1950 : 1.82,1951 : 1.82}"""
 
     resCount = 0
     totalTime = 0.0
