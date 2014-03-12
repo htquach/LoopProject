@@ -95,14 +95,6 @@ def mid_weekday_peak_period_travel_times():
             dList.append(i['detectorid'])
 
 
-    """#NEED TO STILL GET dLIST SOMEHOW
-    dList = [1345,1346,1347,1348,1353,1354,1355,1361,1362,1363,1369,1370,1371,1809,1810,1811,1941,1942,1943,1949,1950,1951]
-
-    detectorCount = len(dList)
-
-    #NEED TO CREAT FUNCTION FOR detector mid length dDict
-    dDict = {1345 : 0.94,1346 : 0.94,1347 : 0.94,1348 : 0.94,1353 : 1.89,1354 : 1.89,1355 : 1.89,1361 : 1.6,1362 : 1.6,1363 : 1.6,1369 : 0.86,1370 : 0.86,1371 : 0.86,1809 : 0.84,1810 : 0.84,1811 : 0.84,1941 : 2.14,1942 : 2.14,1943 : 2.14,1949 : 1.82,1950 : 1.82,1951 : 1.82}"""
-
     resCount = 0
     totalTime = 0.0
 
@@ -169,7 +161,7 @@ def mid_weekday_peak_period_travel_times():
 
     file.close()
     #decide if running map reduce job makes sense or not
-
+                                          
     print "Average Commute Time: ", totalTime/(resCount/stationCount)
 
     
