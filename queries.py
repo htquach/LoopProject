@@ -576,7 +576,7 @@ def main():
 
 if __name__ == '__main__':
 
-    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION, aws_access_key_id='AKIAJ2ILBJB7HPAXVFDQ', aws_secret_access_key='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')
+    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION, aws_access_key_id='', aws_secret_access_key='')
 
     init_conn()
     
