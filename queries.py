@@ -11,15 +11,24 @@ Nelson, Jason
 Quach, Hong
 """
 
+import exceptions
+import multiprocessing
+from multiprocessing.pool import ThreadPool
+
 import boto.sdb
 # AWS Boto API http://aws.amazon.com/sdkforpython/
 
 # http://docs.aws.amazon.com/general/latest/gr/rande.html#sdb_region
+
 AWS_WEST_OR_REGION = 'us-west-2'
 
 DETECTOR_DOMAIN = 'TeamA_Detector'
 LOOP_DOMAIN = 'TeamA_Loop'
 STATION_DOMAIN  = 'TeamA_Station'
+
+STATION_CLASS_MAINLINE = '1'
+DETECTOR_CLASS_MAINLINE = '1'
+LOOP_STATUS_OK = '2'
 
 # Global variables for data access
 conn = None
@@ -72,6 +81,34 @@ def single_day_station_travel_times():
     print(NotImplemented)
 
 
+def _hourly_speed_group_by((station_id, loop_result_iter)):
+    """Helper function to group by the result and process each
+    result in the loop_result_iter.  SimpleDB does not support any
+    function in select beside COUNT(*), so combining the station_id
+    constant and derive hourly starttime need to be done outside
+    the query.
+    Required attributes in loop_result_iter
+        "starttime" with format "YYYY-MM-ddTHH:mm:ss"
+        "speed" with format of integer string
+
+    Return a list of tuple (station_id, starttime_hour, speed)
+    """
+    result = []
+    #TODO: test one item for the expected attribute
+
+    #TODO: implement a query select instead of roundtrip every query.
+
+    loop_result = list(loop_result_iter)
+    for loop in loop_result:
+        try:
+            starttime_hour = "%s:00:00" % loop["starttime"][:-6]
+            speed = int(loop["speed"])
+        except exceptions.ValueError:
+            continue
+        result.append((station_id, starttime_hour, speed))
+    return({station_id: result})
+
+
 def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
                                  highway_name=None, short_direction=None):
     """Find travel time for the entire I-205 NB freeway
@@ -79,18 +116,97 @@ def hourly_corridor_travel_times(from_station_name=None, to_station_name=None,
     in the data set) for each hour in the 2-month test period.
     """
     print('Query b: Hourly Corridor Travel Times')
-    # Using a 'for-loop' to query the sequence of stations from the starting
+    # 1.  Using a 'for-loop' to query the sequence of stations from the starting
     # station to the ending station (Sunnyside to River).
     # Traverse by 'downstream' station ID.
+    # Query the first station
+    first_station_query = ("""SELECT * FROM `%s`
+        WHERE locationtext = "%s"
+            AND highwayname = "%s"
+            AND shortdirection = "%s"
+            AND stationclass = "%s" """
+        % (STATION_DOMAIN, from_station_name, highway_name, short_direction, STATION_CLASS_MAINLINE))
+    station_result = list(station_dom.select(first_station_query, max_items=1))
 
-    # Query the list of detectors in the list of stations found in step 1
+    all_stations = []
+    station_id_chain = []
+    # Traverse the station through the downstream station attribute until
+    # no downstream station or terminated by to_station_name
+    while station_result:
+        current_station = station_result[0]
+        all_stations.append(current_station)
+        station_id_chain.append(current_station["stationid"])
+        if current_station["locationtext"] == to_station_name:
+            break
+        station_query = ("""SELECT * FROM `%s`
+            WHERE stationid = "%s"
+                AND stationclass = "%s" """
+            % (STATION_DOMAIN, current_station["downstream"], STATION_CLASS_MAINLINE))
+        station_result = list(station_dom.select(station_query, max_items=1))
+    # Frozen list to maintain sequence
+    station_id_chain = tuple(station_id_chain)
+    print("Station IDs chain:  %s" % (" --> ".join(station_id_chain)))
 
-    # Query all loop data having detector ID in the list of detectors found in step 2
+    # 2.  Query the list of detectors in the list of stations found in step 1
+    all_detectors = []
+    detector_ids_by_station_chain = {}
+    for station_id in station_id_chain:
+        detector_query = ("""SELECT * FROM `%s`
+            WHERE stationid="%s"
+                AND detectorclass = "%s" """
+            % (DETECTOR_DOMAIN, station_id, DETECTOR_CLASS_MAINLINE))
+        detector_result = list(detector_dom.select(detector_query))
+        all_detectors.extend(detector_result)
+        detector_ids_by_station_chain[station_id] = [d["detectorid"] for d in detector_result]
 
-    # Using a mapper to map speed by starttime and station ID.
+    print("Detector IDs group by Station ID chain:")
+    for station_id in station_id_chain:
+        print("%s: %s" % (station_id, detector_ids_by_station_chain[station_id]))
+
+    # 3.  Query all loop data having detector ID in the list of detectors found in step 2
+
+    loop_query_by_station = {}
+    # Build a query to select all loop data for each station
+    for station_id in station_id_chain:
+        query_or_clauses = []
+        for detector_id in detector_ids_by_station_chain[station_id]:
+            query_or_clauses.append('detectorid="%s"' % (detector_id))
+        all_loops_query = ("""SELECT starttime, speed FROM `%s`
+            WHERE status = "%s"
+                AND speed IS NOT NULL
+                AND speed != ""
+                AND (%s) """
+            % (LOOP_DOMAIN, LOOP_STATUS_OK, " OR ".join(query_or_clauses)))
+        all_loops_query += " LIMIT 10"
+        loop_query_by_station[station_id] = all_loops_query
+
+    # 4.  Using a mapper to map speed by starttime and station ID.
     # Because SimpleDB can store multiple values in one attributes,
     # we will map all the speed data of a given station within a given
     # hour into a value of that station with the starttime as key.
+    hourly_average_speed_by_station = {}
+    group_by_args1 = []
+    group_by_args2 = []
+    for station_id, loop_query in loop_query_by_station.items():
+        print("Query for station ID# %s" % station_id)
+        print(loop_query)
+        #Debug note: apply the max_items for sample result
+        loop_result_iter = loop_dom.select(loop_query)
+        group_by_args1.append(station_id)
+        group_by_args2.append(loop_result_iter)
+
+    groupers = multiprocessing.Pool(multiprocessing.cpu_count()*2)
+    for result in groupers.map(_hourly_speed_group_by, zip(group_by_args1, group_by_args2)):
+        # TODO pick one and remove the other, depend on the reduce step.
+        # save to memory
+        hourly_average_speed_by_station[result.keys()[0]] = result[result.keys()[0]]
+        # save to disc
+        with open('query_2_station_%s_loop_hourly.txt' % result.keys()[0], 'w') as result_file:
+            result_file.write("\n".join(result[result.keys()[0]]))
+
+    # 5.  Reduce to starhour, travelduration
+    # TODO:  implement reducer
+    print("Still need to reduce the data.  Do it here or use AWS EMR")
 
 
 def mid_weekday_peak_period_travel_times():
@@ -349,30 +465,30 @@ def init_conn():
 
 def main():
     """Show the domain summary and run each query one at a time."""
-    show_domains_stat()
-    print("-" * 50)
+    # show_domains_stat()
+    # print("-" * 50)
 
     # query_top_5_detector()
-    print("-" * 50)
+    # print("-" * 50)
 
     ##Jason
-    single_day_station_travel_times()
-    print("-" * 50)
+    # single_day_station_travel_times()
+    # print("-" * 50)
 
     ##Hong
-    hourly_corridor_travel_times(from_station_name='Sunnyside NB',
-                                 to_station_name='Columbia to I-205 NB',
-                                 highway_name='I-205',
-                                 short_direction='N')
-    print("-" * 50)
+    # hourly_corridor_travel_times(from_station_name='Sunnyside NB',
+    #                              to_station_name='Columbia to I-205 NB',
+    #                              highway_name='I-205',
+    #                              short_direction='N')
+    # print("-" * 50)
 
     ##Tyler -- About 7 minutes
-    mid_weekday_peak_period_travel_times()
-    print("-" * 50)
+    #mid_weekday_peak_period_travel_times()
+    #print("-" * 50)
 
     ##Jon
-    station_to_station_travel_times()
-    print("-" * 50)
+    #station_to_station_travel_times()
+    #print("-" * 50)
 
 
 if __name__ == '__main__':
