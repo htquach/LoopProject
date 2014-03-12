@@ -123,7 +123,7 @@ def single_day_station_travel_times():
     dDict = {1345 : 0.94,1346 : 0.94,1347 : 0.94,1348 : 0.94,1353 : 1.89,1354 : 1.89,1355 : 1.89,1361 : 1.6,1362 : 1.6,1363 : 1.6,1369 : 0.86,1370 : 0.86,1371 : 0.86,1809 : 0.84,1810 : 0.84,1811 : 0.84,1941 : 2.14,1942 : 2.14,1943 : 2.14,1949 : 1.82,1950 : 1.82,1951 : 1.82}
 
     #this dictionary will match the detectorid to stationid used above for each detector to corresponding stations
-    dettosta = {1345:1111, 1346:1111, 1347:1111, 1348:1111, 1353:2222, 1354:2222, 1355:2222, 1361:3333, 1362:3333, 1363:3333, 1369:4444, 1370:4444, 1371:4444, 1809:5555, 1810:5555, 1811:5555, 1941:6666, 1942:6666, 1943:6666, 1949:7777, 1950:7777, 1951:7777)
+    dettosta = {1345:1111, 1346:1111, 1347:1111, 1348:1111, 1353:2222, 1354:2222, 1355:2222, 1361:3333, 1362:3333, 1363:3333, 1369:4444, 1370:4444, 1371:4444, 1809:5555, 1810:5555, 1811:5555, 1941:6666, 1942:6666, 1943:6666, 1949:7777, 1950:7777, 1951:7777}
     #count of results
     resCount = 0
     totalTime = 0.0
@@ -555,8 +555,8 @@ def main():
     print("-" * 50)
 
     ##Jason
-    # single_day_station_travel_times()
-    # print("-" * 50)
+    single_day_station_travel_times()
+    print("-" * 50)
 
     ##Hong
     hourly_corridor_travel_times(from_station_name='Sunnyside NB',
@@ -576,6 +576,8 @@ def main():
 
 if __name__ == '__main__':
 
-    init_conn()
+    conn = boto.sdb.connect_to_region(AWS_WEST_OR_REGION, aws_access_key_id='AKIAJ2ILBJB7HPAXVFDQ', aws_secret_access_key='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')
 
+    init_conn()
+    
     main()
